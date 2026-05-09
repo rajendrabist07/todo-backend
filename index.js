@@ -34,7 +34,10 @@ app.put('/api/task/:id', updateTask)
 app.delete('/api/task/:id', deleteTask)
 
 app.get('/', (req, res) => {
-    res.send('Hello! This is a Todo App Backend!')
+    res.status(200).json({
+        success: true,
+        message: 'Hello! This is a Todo App Backend!'
+    })
 })
 
 const PORT = process.env.PORT || 5000
