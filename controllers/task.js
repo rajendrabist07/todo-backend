@@ -1,6 +1,7 @@
 import Task from "../models/task.js";
 import mongoose from "mongoose";
 
+
 async function createTask(req, res) {
     try {
         const { taskname, description } = req.body;
@@ -23,6 +24,7 @@ async function createTask(req, res) {
 async function getTasks(req, res) {
     try {
         const { user } = req;
+        console.log(user)
         const tasks = await Task.find({ user_id: user._id });
         res.status(200).json({ message: 'tasks fetched successfully', data: tasks })
     } catch (error) {

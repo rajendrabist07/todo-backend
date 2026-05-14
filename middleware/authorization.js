@@ -1,44 +1,57 @@
 import User from "../models/user.js";
 import jwt from "jsonwebtoken";
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
 
 const authorization = async (req, res, next) => {
     try {
-        const header = req.headers.authorization;
+        const authHeader = req.headers.authorization;
 
-        if (!header) {
+        if (!authHeader) {
             return res.status(401).json({ message: "Unauthorized: No token provided" });
         }
 
-        const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : header.trim();
+        // Extract token (supports both "Bearer token" and just "token")
+        let token = authHeader;
+        if (authHeader.startsWith("Bearer ")) {
+            token = authHeader.slice(7).trim();
+        } else {
+            token = authHeader.trim();
+        }
+
         if (!token) {
-            return res.status(401).json({ message: "Unauthorized: No token provided" });
+            return res.status(401).json({ message: "Unauthorized: Invalid token format" });
         }
 
         const secret = process.env.JWT_SECRET;
         if (!secret) {
-            return res.status(500).json({ message: "Server misconfigured: JWT secret missing" });
+            console.error("JWT_SECRET not configured");
+            return res.status(500).json({ message: "Server configuration error" });
         }
 
-        const data = jwt.verify(token, secret)
+        const decoded = jwt.verify(token, secret);
 
-        const user = await User.findById(data.id);
+        const user = await User.findById(decoded.id).select('-password');
 
         if (!user) {
             return res.status(401).json({ message: "Unauthorized: User not found" });
         }
 
-        req.user = user; // Attach user to request object
-
+        req.user = user;
         next();
     } catch (error) {
-        if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
-            return res.status(401).json({ message: "Unauthorized: Invalid or expired token" });
+        console.error("Authorization Error:", error);
+
+        if (error.name === "JsonWebTokenError") {
+            return res.status(401).json({ message: "Unauthorized: Invalid token" });
         }
-        res.status(500).json({ message: "Internal server error" })
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Unauthorized: Token expired" });
+        }
+
+        res.status(500).json({ message: "Internal server error during authorization" });
     }
-}
+};
 
 export default authorization;

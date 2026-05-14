@@ -1,33 +1,33 @@
-import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
-import dotenv from 'dotenv'
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
 
-const generateHash = async (Password) => {
+const generateHash = async (password) => {
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(Password, salt);
+    const hash = await bcrypt.hash(password, salt);
     return hash;
-}
+};
 
-const compareHash = async (Password, hashPassword) => {
-    const isMatch = await bcrypt.compare(Password, hashPassword);
-    return isMatch;
-}
+const compareHash = async (password, hashPassword) => {
+    return await bcrypt.compare(password, hashPassword);
+};
 
-const privateKey = process.env.JWT_SECRET
+const privateKey = process.env.JWT_SECRET;
 
 const generateAuthToken = (user) => {
     if (!privateKey) {
-        throw new Error("JWT_SECRET is not set");
+        throw new Error("JWT_SECRET is not configured in environment variables");
     }
-    const data = {
+
+    const payload = {
         id: user._id,
-        name: user.name
-    }
+        name: user.name,
+        email: user.email
+    };
 
-    return jwt.sign(data, privateKey, { expiresIn: '1day' });
+    return jwt.sign(payload, privateKey, { expiresIn: '7d' }); // Extended to 7 days
+};
 
-}
-
-export { generateAuthToken, generateHash, compareHash }
+export { generateAuthToken, generateHash, compareHash };

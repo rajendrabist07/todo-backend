@@ -1,3 +1,30 @@
-node_modules/
+# Dependencies
+node_modules
+package-lock.json
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+temp/

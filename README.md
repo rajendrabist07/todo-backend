@@ -14,7 +14,7 @@ A simple Express + MongoDB backend for the todo app. This backend provides user 
 1. Install dependencies:
 
    ```bash
-   cd /Users/rajendrabist/Desktop/Express-js
+   cd /Users/rajendrabist/Desktop/todo-backend-main
    npm install
    ```
 
@@ -22,11 +22,12 @@ A simple Express + MongoDB backend for the todo app. This backend provides user 
 
    ```env
    PORT=5001
+   NODE_ENV=development
    MONGO_URI=mongodb://127.0.0.1:27017/authDB
    JWT_SECRET=my_secret
    ```
 
-3. Start the server:
+3. Start your local MongoDB server first, then start the backend:
 
    ```bash
    npm start
