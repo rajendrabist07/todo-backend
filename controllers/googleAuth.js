@@ -1,12 +1,9 @@
-import User from '../models/user.js';
+import User from '../models/googleAuth.js';
 import { generateAuthToken } from '../application.js';
 import { OAuth2Client } from 'google-auth-library';
 
-const googleClient = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.FRONTEND_URL}/auth/google/callback`
-);
+// Only pass CLIENT_ID — no secret or redirect URI needed for verifyIdToken
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const googleAuth = async (req, res) => {
     try {
@@ -16,25 +13,52 @@ export const googleAuth = async (req, res) => {
             return res.status(400).json({ message: "Google token is required" });
         }
 
-        const ticket = await googleClient.verifyIdToken({
-            idToken: token,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
+        // verifyIdToken only needs the audience (your client ID)
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken: token,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (verifyError) {
+            console.error("Token verification failed:", verifyError);
+            return res.status(401).json({ message: "Invalid or expired Google token" });
+        }
 
-        const payload = ticket.getPayload();
         const { email, name, sub: googleId } = payload;
 
-        // Find or create user
-        let user = await User.findOne({ email });
+        if (!email || !googleId) {
+            return res.status(400).json({ message: "Incomplete Google account data" });
+        }
+
+        // Find by googleId first, then fall back to email
+        let user = await User.findOne({ $or: [{ googleId }, { email }] });
 
         if (!user) {
+            // New user — create without password
             user = await User.create({
-                name: name,
-                email: email,
-                password: googleId, // Store Google ID as password (won't be used for Google auth)
-                googleId: googleId,
-                isGoogleAuth: true
+                name,
+                email,
+                googleId,
+                isGoogleAuth: true,
+                // Don't store googleId as password
+                // Leave password undefined/null (make sure your schema allows this for Google users)
             });
+        } else {
+            // Existing user found by email — patch in googleId if missing
+            let needsSave = false;
+
+            if (!user.googleId) {
+                user.googleId = googleId;
+                needsSave = true;
+            }
+            if (!user.isGoogleAuth) {
+                user.isGoogleAuth = true;
+                needsSave = true;
+            }
+
+            if (needsSave) await user.save();
         }
 
         const auth_token = generateAuthToken(user);
@@ -44,12 +68,13 @@ export const googleAuth = async (req, res) => {
             name: user.name,
             email: user.email,
             auth_token,
-            isGoogleAuth: true
+            isGoogleAuth: true,
         };
 
-        res.status(200).json({ message: "Google authentication successful", data });
+        return res.status(200).json({ message: "Google authentication successful", data });
+
     } catch (error) {
         console.error("Google Auth Error:", error);
-        res.status(500).json({ message: "Google authentication failed" });
+        return res.status(500).json({ message: "Google authentication failed" });
     }
 };
